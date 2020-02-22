@@ -1,0 +1,29 @@
+<Rules>
+  <Rule advanced="true" active="" fireInternalIncident="true" phIncidentCategory="Internal" functionCategory="Change" subFunction="PH_RULE_CHANGE_Audit">
+    <Name>CTIBLACKLIST Malware list Updated</Name>
+    <Description>CTIBLACKLIST Malware list Updated</Description>
+    <Remediation/>
+    <CustomerScope groupByEachCustomer="true">
+      <Include all="true"/>
+      <Exclude/>
+    </CustomerScope>
+    <PatternClause window="600">
+      <SubPattern id="26945301" name="Update">
+        <SingleEvtConstr>rawEventMsg CONTAIN "PH_AUDIT_OBJECT_UPDATED"  AND  phEventCategory = 2  AND  rawEventMsg CONTAIN "CTIBLACKLIST"</SingleEvtConstr>
+        <GroupEvtConstr>COUNT(*) &gt;= 1</GroupEvtConstr>
+        <GroupByAttr>phCustId</GroupByAttr>
+      </SubPattern>
+    </PatternClause>
+    <IncidentDef eventType="CTIBLACKLIST_Malware_list_Updated" eventTypeGroup="PH_SYS_EVENT_PH_RULE_CHANGE" fireFreq="86400" severity="4">
+      <ArgList>phCustId=Update.phCustId</ArgList>
+    </IncidentDef>
+    <DynWatchListDef/>
+    <userRoles>
+      <roles custId="0">1170800</roles>
+    </userRoles>
+    <TriggerEventDisplay>
+      <AttrList>phRecvTime,phCustId,rawEventMsg</AttrList>
+    </TriggerEventDisplay>
+  </Rule>
+</Rules>
+
