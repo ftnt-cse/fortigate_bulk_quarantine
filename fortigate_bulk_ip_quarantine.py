@@ -2,6 +2,8 @@
 # Quarantines  on Fortigate a list of specific FortiSIEM malware IP elements
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND
 # changelog: v0.3 added support to run the remediation from either a collector or super.
+__license__ = "GPL"
+__version__ = "0.3"
 
 import re
 import sys
