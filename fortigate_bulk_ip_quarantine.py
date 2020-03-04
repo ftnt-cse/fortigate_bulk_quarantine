@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 # Quarantines  on Fortigate a list of specific FortiSIEM malware IP elements
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND
+# changelog: v0.3 added support to run the remediation from either a collector or super.
 
 import re
 import sys
@@ -20,6 +21,7 @@ MAX_IP_COUNT='15000'
 QUARANTINE_SECONDS=86400 # 1 day
 
 # Internal Settings
+#phLicenseTool --showDatabasePassword # <== get db passwd on super with this command and paste it in db_password
 db_username='phoenix'
 db_password=''
 
@@ -30,6 +32,19 @@ mAccessIp 		= sys.argv[4]
 mHostName 		= sys.argv[5]
 mPort 			= sys.argv[6]
 
+def get_super_ip():
+	for line in open("/opt/phoenix/config/phoenix_config.txt"):
+		if "MON_ROLE=" in line:
+			role = line.split('=')[1]
+	if not role:
+		print('cannot determine FSM Supervisor IP')
+		exit()
+	if 'phMonitorSupervisor' in role:
+		return '127.0.0.1'
+	elif 'phMonitorAgent' in role:
+		for file in os.listdir('/opt/phoenix/cache/'):
+			if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$",file):
+				return file
 
 def pg_query(username,password,query,host='127.0.0.1',database='phoenixdb',port=5432):
 	records=[]
@@ -60,7 +75,7 @@ def run_fg_remediation(mIncidentXML, mAccessIp, mPort, mUser, mPassword, ioc_lis
 				print(ioc,' is not a valid IP address')
 				exit(1)
 
-		json_data={'ip_addresses':ioc_list,'expiry':86400}
+		json_data={'ip_addresses':ioc_list,'expiry':quarantine_seconds}
 		response = fgt.post('monitor', 'user', 'banned','add_users', parameters={'vdom': 'root'}, data=json_data)
 		print("returned by FortiGate:\n%s" % response)
 		fgt.logout()
@@ -68,9 +83,11 @@ def run_fg_remediation(mIncidentXML, mAccessIp, mPort, mUser, mPassword, ioc_lis
 
 def main():
 	ip_list=[]
-	group_id=pg_query(db_username,db_password,"select id from ph_group where display_name='CTIBLACKLIST'")[0][0]
+	super_ip=get_super_ip()
+	print('Super: ',super_ip)
+	group_id=pg_query(db_username,db_password,"select id from ph_group where display_name='CTIBLACKLIST'",super_ip)[0][0]
 	if isinstance(group_id, int):
-		bad_ips=pg_query(db_username,db_password,"select low_ip from ph_malware_ip where group_id='"+str(group_id)+"' LIMIT " + MAX_IP_COUNT)
+		bad_ips=pg_query(db_username,db_password,"select low_ip from ph_malware_ip where group_id='"+str(group_id)+"' LIMIT " + MAX_IP_COUNT,super_ip)
 		for ip in bad_ips:
 			ip_list.append(ip[0])
 
@@ -79,4 +96,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-
